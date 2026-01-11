@@ -131,7 +131,7 @@ Column Family: users
 | `range <cf> <start> <end> [limit]` | Scan keys in a range (inclusive) |
 | `prefix <cf> <prefix> [limit]` | Scan keys with a given prefix |
 
-**Examples:**
+**Examples**
 ```
 admintool(/tmp/testdb)> put users user:1001 '{"name":"Alice","age":30}'
 OK
@@ -173,7 +173,7 @@ OK
 | `sstable-checksum <path>` | Verify all block checksums (xxHash32) |
 | `bloom-stats <path>` | Show bloom filter statistics (size, fill ratio, estimated FPR) |
 
-**Examples:**
+**Examples**
 ```
 admintool(/tmp/testdb)> sstable-list users
 SSTables in 'users':
@@ -264,7 +264,7 @@ Bloom Filter Statistics: /tmp/testdb/users/sstable_1.klog
 | `wal-verify <path>` | Verify WAL integrity and report corruption |
 | `wal-checksum <path>` | Verify all block checksums (xxHash32) |
 
-**Examples:**
+**Examples**
 ```
 admintool(/tmp/testdb)> wal-list users
 WAL files in 'users':
@@ -314,7 +314,7 @@ Checksum Verification Results:
 | `level-info <cf>` | Show per-level SSTable details |
 | `verify <cf>` | Verify integrity of all files in a column family |
 
-**Examples:**
+**Examples**
 ```
 admintool(/tmp/testdb)> level-info users
 Level Information for 'users':
@@ -356,7 +356,7 @@ Verification Results:
 | `compact <cf>` | Trigger compaction for a column family |
 | `flush <cf>` | Flush memtable to disk |
 
-**Examples:**
+**Examples**
 ```
 admintool(/tmp/testdb)> flush users
 Memtable flushed for 'users'
@@ -367,11 +367,11 @@ Compaction triggered for 'users'
 
 ### Other Commands
 
-| Command | Description |
-|---------|-------------|
-| `version` | Show TidesDB version |
-| `help` | Show help message |
-| `quit` / `exit` | Exit the admintool |
+| Command | Description                    |
+|---------|--------------------------------|
+| `version` | Show TidesDB version installed |
+| `help` | Show help message              |
+| `quit` / `exit` | Exit the admintool             |
 
 **Example:**
 ```
