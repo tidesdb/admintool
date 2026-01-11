@@ -1,15 +1,15 @@
-# TidesDB Admin Tool
+# Admintool
 
 A command-line administration and debugging tool for TidesDB databases. The admintool provides interactive and scripted access to database operations, SSTable/WAL inspection, and integrity verification.
 
 ## Features
 
-- **Database Management** - Open, close, and inspect TidesDB databases
-- **Column Family Operations** - Create, drop, list, and get statistics for column families
-- **Key-Value Operations** - Put, get, delete, scan, range queries, and prefix searches
-- **SSTable Analysis** - List, inspect, dump entries, show statistics, and list keys from SSTable files
-- **WAL Analysis** - List, inspect, dump entries, and verify integrity of WAL files
-- **Maintenance** - Trigger compaction, flush memtables, verify integrity
+- Database Management - Open, close, and inspect TidesDB databases
+- Column Family Operations - Create, drop, list, and get statistics for column families
+- Key-Value Operations - Put, get, delete, scan, range queries, and prefix searches
+- SSTable Analysis - List, inspect, dump entries, show statistics, and list keys from SSTable files
+- WAL Analysis - List, inspect, dump entries, and verify integrity of WAL files
+- Maintenance - Trigger compaction, flush memtables, verify integrity
 
 ## Building
 
