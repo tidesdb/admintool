@@ -56,7 +56,7 @@ Options:
 ./admintool -d /path/to/mydb -c "cf-list"
 
 # Dump SSTable without opening database
-./admintool -c "sstable-dump /path/to/mydb/mycf/sstable_1.klog 100"
+./admintool -c "sstable-dump /path/to/mydb/mycf/L1_1.klog 100"
 ```
 
 ## Commands Reference
@@ -177,19 +177,19 @@ OK
 ```
 admintool(/tmp/testdb)> sstable-list users
 SSTables in 'users':
-  sstable_1.klog (2097152 bytes)
-  sstable_2.klog (1048576 bytes)
+  L1_1.klog (2097152 bytes)
+  L1_2.klog (1048576 bytes)
 (2 SSTables)
 
-admintool(/tmp/testdb)> sstable-info /tmp/testdb/users/sstable_1.klog
-SSTable: /tmp/testdb/users/sstable_1.klog
+admintool(/tmp/testdb)> sstable-info /tmp/testdb/users/L1_1.klog
+SSTable: /tmp/testdb/users/L1_1.klog
   File Size: 2097152 bytes
   Block Count: 64
   Last Modified: 1736560000
   First Block Size: 32768 bytes
   Last Block Size (metadata): 4096 bytes
 
-admintool(/tmp/testdb)> sstable-dump /tmp/testdb/users/sstable_1.klog 5
+admintool(/tmp/testdb)> sstable-dump /tmp/testdb/users/L1_1.klog 5
 SSTable Entries (limit: 5):
 1) [blk:0] seq=1 key="user:1001" value="{"name":"Alice","age":30}"
 2) [blk:0] seq=3 key="user:1003" value="{"name":"Charlie","age":35}"
@@ -199,8 +199,8 @@ SSTable Entries (limit: 5):
 
 (5 entries dumped from 2 blocks)
 
-admintool(/tmp/testdb)> sstable-stats /tmp/testdb/users/sstable_1.klog
-SSTable Statistics: /tmp/testdb/users/sstable_1.klog
+admintool(/tmp/testdb)> sstable-stats /tmp/testdb/users/L1_1.klog
+SSTable Statistics: /tmp/testdb/users/L1_1.klog
   File Size: 2097152 bytes (2.00 MB)
   Block Count: 64
   Total Entries: 10000
@@ -211,7 +211,7 @@ SSTable Statistics: /tmp/testdb/users/sstable_1.klog
   Key Sizes: min=8 max=64 avg=12.5
   Value Sizes: min=0 max=4096 avg=128.3
 
-admintool(/tmp/testdb)> sstable-keys /tmp/testdb/users/sstable_1.klog 5
+admintool(/tmp/testdb)> sstable-keys /tmp/testdb/users/L1_1.klog 5
 SSTable Keys (limit: 5):
 1) "user:1001"
 2) "user:1002" [DEL]
@@ -222,8 +222,8 @@ SSTable Keys (limit: 5):
 (5 keys listed)
 Key Range: "user:1001" to "user:1005"
 
-admintool(/tmp/testdb)> sstable-checksum /tmp/testdb/users/sstable_1.klog
-Verifying checksums: /tmp/testdb/users/sstable_1.klog
+admintool(/tmp/testdb)> sstable-checksum /tmp/testdb/users/L1_1.klog
+Verifying checksums: /tmp/testdb/users/L1_1.klog
   File Size: 2097152 bytes
 
 Checksum Verification Results:
@@ -232,10 +232,10 @@ Checksum Verification Results:
   Invalid: 0
   Status: OK
 
-admintool(/tmp/testdb)> sstable-dump-full /tmp/testdb/users/sstable_1.klog /tmp/testdb/users/sstable_1.vlog 3
+admintool(/tmp/testdb)> sstable-dump-full /tmp/testdb/users/L1_1.klog /tmp/testdb/users/L1_1.vlog 3
 SSTable Full Dump (limit: 3):
-  KLog: /tmp/testdb/users/sstable_1.klog
-  VLog: /tmp/testdb/users/sstable_1.vlog
+  KLog: /tmp/testdb/users/L1_1.klog
+  VLog: /tmp/testdb/users/L1_1.vlog
 
 1) [blk:0] seq=1 key="user:1001" value="{"name":"Alice","age":30}"
 2) [blk:0] [VLOG:8192] seq=2 key="user:large" value="This is a large value retrieved from vlog..."
@@ -243,8 +243,8 @@ SSTable Full Dump (limit: 3):
 
 (3 entries from 1 blocks)
 
-admintool(/tmp/testdb)> bloom-stats /tmp/testdb/users/sstable_1.klog
-Bloom Filter Statistics: /tmp/testdb/users/sstable_1.klog
+admintool(/tmp/testdb)> bloom-stats /tmp/testdb/users/L1_1.klog
+Bloom Filter Statistics: /tmp/testdb/users/L1_1.klog
   Serialized Size: 4096 bytes
   Filter Size (m): 95850 bits (11.70 KB)
   Hash Functions (k): 7
@@ -268,16 +268,16 @@ Bloom Filter Statistics: /tmp/testdb/users/sstable_1.klog
 ```
 admintool(/tmp/testdb)> wal-list users
 WAL files in 'users':
-  wal_1736560000.log (524288 bytes)
+  wal_0.log (524288 bytes)
 (1 WAL files)
 
-admintool(/tmp/testdb)> wal-info /tmp/testdb/users/wal_1736560000.log
-WAL: /tmp/testdb/users/wal_1736560000.log
+admintool(/tmp/testdb)> wal-info /tmp/testdb/users/wal_0.log
+WAL: /tmp/testdb/users/wal_0.log
   File Size: 524288 bytes
   Block Count (entries): 1000
   Last Modified: 1736560500
 
-admintool(/tmp/testdb)> wal-dump /tmp/testdb/users/wal_1736560000.log 5
+admintool(/tmp/testdb)> wal-dump /tmp/testdb/users/wal_0.log 5
 WAL Entries (limit: 5):
 1) [PUT] seq=10501 key="user:2001" value="{"name":"Eve","age":22}"
 2) [PUT] seq=10502 key="user:2002" value="{"name":"Frank","age":40}"
@@ -287,8 +287,8 @@ WAL Entries (limit: 5):
 
 (5 WAL entries dumped)
 
-admintool(/tmp/testdb)> wal-verify /tmp/testdb/users/wal_1736560000.log
-Verifying WAL: /tmp/testdb/users/wal_1736560000.log
+admintool(/tmp/testdb)> wal-verify /tmp/testdb/users/wal_0.log
+Verifying WAL: /tmp/testdb/users/wal_0.log
   File Size: 524288 bytes
   Valid Entries: 1000
   Corrupted Entries: 0
@@ -296,8 +296,8 @@ Verifying WAL: /tmp/testdb/users/wal_1736560000.log
   Last Valid Position: 524200
   Status: OK
 
-admintool(/tmp/testdb)> wal-checksum /tmp/testdb/users/wal_1736560000.log
-Verifying checksums: /tmp/testdb/users/wal_1736560000.log
+admintool(/tmp/testdb)> wal-checksum /tmp/testdb/users/wal_0.log
+Verifying checksums: /tmp/testdb/users/wal_0.log
   File Size: 524288 bytes
 
 Checksum Verification Results:
@@ -444,7 +444,7 @@ When values exceed the configured threshold, TidesDB stores them in a separate v
 
 ```bash
 # Dump with vlog value retrieval
-./admintool -c "sstable-dump-full /path/cf/sstable_1.klog /path/cf/sstable_1.vlog 10"
+./admintool -c "sstable-dump-full /path/cf/L1_1.klog /path/cf/L1_1.vlog 10"
 ```
 
 The vlog offset stored in the klog entry points to the block header in the vlog file. The admintool reads the block, verifies its checksum, and displays the value.
@@ -463,10 +463,10 @@ The vlog offset stored in the klog entry points to the block header in the vlog 
 ### Analyzing SSTable Contents
 ```bash
 # Get statistics without opening the database
-./admintool -c "sstable-stats /path/to/db/cf/sstable_1.klog"
+./admintool -c "sstable-stats /path/to/db/cf/L1_1.klog"
 
 # List all keys to understand data distribution
-./admintool -c "sstable-keys /path/to/db/cf/sstable_1.klog 10000"
+./admintool -c "sstable-keys /path/to/db/cf/L1_1.klog 10000"
 ```
 
 ### Recovery and Verification
