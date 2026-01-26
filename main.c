@@ -85,7 +85,9 @@ static void print_usage(void) {
   printf("  cf-list                 List all column families\n");
   printf("  cf-create <name>        Create column family with defaults\n");
   printf("  cf-drop <name>          Drop column family\n");
-  printf("  cf-stats <name>         Show column family statistics\n\n");
+  printf("  cf-rename <old> <new>   Rename column family\n");
+  printf("  cf-stats <name>         Show column family statistics\n");
+  printf("  cf-status <name>        Show flush/compaction status\n\n");
   printf("  put <cf> <key> <value>  Put key-value pair\n");
   printf("  get <cf> <key>          Get value by key\n");
   printf("  delete <cf> <key>       Delete key\n");
@@ -108,7 +110,8 @@ static void print_usage(void) {
   printf("  level-info <cf>         Show per-level SSTable details\n");
   printf("  verify <cf>             Verify column family integrity\n\n");
   printf("  compact <cf>            Trigger compaction\n");
-  printf("  flush <cf>              Flush memtable to disk\n\n");
+  printf("  flush <cf>              Flush memtable to disk\n");
+  printf("  backup <path>           Create database backup\n\n");
   printf("  version                 Show TidesDB version\n");
   printf("  help                    Show this help\n");
   printf("  quit, exit              Exit admintool\n");
@@ -197,16 +200,18 @@ static const char *error_to_string(const int err) {
 
 static const char *compression_to_string(const int algo) {
   switch (algo) {
-  case NO_COMPRESSION:
+  case TDB_COMPRESS_NONE:
     return "none";
 #ifndef __sun
-  case SNAPPY_COMPRESSION:
+  case TDB_COMPRESS_SNAPPY:
     return "snappy";
 #endif
-  case LZ4_COMPRESSION:
+  case TDB_COMPRESS_LZ4:
     return "lz4";
-  case ZSTD_COMPRESSION:
+  case TDB_COMPRESS_ZSTD:
     return "zstd";
+  case TDB_COMPRESS_LZ4_FAST:
+    return "lz4_fast";
   default:
     return "unknown";
   }
@@ -220,6 +225,23 @@ static const char *sync_mode_to_string(const int mode) {
     return "full";
   case TDB_SYNC_INTERVAL:
     return "interval";
+  default:
+    return "unknown";
+  }
+}
+
+static const char *isolation_level_to_string(const int level) {
+  switch (level) {
+  case TDB_ISOLATION_READ_UNCOMMITTED:
+    return "read_uncommitted";
+  case TDB_ISOLATION_READ_COMMITTED:
+    return "read_committed";
+  case TDB_ISOLATION_REPEATABLE_READ:
+    return "repeatable_read";
+  case TDB_ISOLATION_SNAPSHOT:
+    return "snapshot";
+  case TDB_ISOLATION_SERIALIZABLE:
+    return "serializable";
   default:
     return "unknown";
   }
@@ -387,6 +409,76 @@ static int cmd_cf_drop(const int argc, char **argv) {
   return 0;
 }
 
+static int cmd_cf_rename(const int argc, char **argv) {
+  if (argc < 3) {
+    printf("Usage: cf-rename <old_name> <new_name>\n");
+    return -1;
+  }
+
+  if (g_db == NULL) {
+    printf("No database is open.\n");
+    return -1;
+  }
+
+  const int ret = tidesdb_rename_column_family(g_db, argv[1], argv[2]);
+  if (ret != TDB_SUCCESS) {
+    printf("Failed to rename column family: %s\n", error_to_string(ret));
+    return ret;
+  }
+
+  printf("Renamed column family '%s' to '%s'\n", argv[1], argv[2]);
+  return 0;
+}
+
+static int cmd_cf_status(const int argc, char **argv) {
+  if (argc < 2) {
+    printf("Usage: cf-status <name>\n");
+    return -1;
+  }
+
+  if (g_db == NULL) {
+    printf("No database is open.\n");
+    return -1;
+  }
+
+  tidesdb_column_family_t *cf = tidesdb_get_column_family(g_db, argv[1]);
+  if (cf == NULL) {
+    printf("Column family '%s' not found.\n", argv[1]);
+    return -1;
+  }
+
+  const int is_flushing = tidesdb_is_flushing(cf);
+  const int is_compacting = tidesdb_is_compacting(cf);
+
+  printf("Column Family Status: %s\n", argv[1]);
+  printf("  Flushing: %s\n", is_flushing ? "yes" : "no");
+  printf("  Compacting: %s\n", is_compacting ? "yes" : "no");
+
+  return 0;
+}
+
+static int cmd_backup(const int argc, char **argv) {
+  if (argc < 2) {
+    printf("Usage: backup <destination_path>\n");
+    return -1;
+  }
+
+  if (g_db == NULL) {
+    printf("No database is open.\n");
+    return -1;
+  }
+
+  printf("Creating backup at '%s'...\n", argv[1]);
+  const int ret = tidesdb_backup(g_db, argv[1]);
+  if (ret != TDB_SUCCESS) {
+    printf("Failed to create backup: %s\n", error_to_string(ret));
+    return ret;
+  }
+
+  printf("Backup completed successfully.\n");
+  return 0;
+}
+
 static int cmd_cf_stats(const int argc, char **argv) {
   if (argc < 2) {
     printf("Usage: cf-stats <name>\n");
@@ -414,6 +506,14 @@ static int cmd_cf_stats(const int argc, char **argv) {
   printf("Column Family: %s\n", argv[1]);
   printf("  Memtable Size: %zu bytes\n", stats->memtable_size);
   printf("  Levels: %d\n", stats->num_levels);
+  printf("  Total Keys: %" PRIu64 "\n", stats->total_keys);
+  printf("  Total Data Size: %" PRIu64 " bytes (%.2f MB)\n",
+         stats->total_data_size,
+         (double)stats->total_data_size / (1024 * 1024));
+  printf("  Avg Key Size: %.1f bytes\n", stats->avg_key_size);
+  printf("  Avg Value Size: %.1f bytes\n", stats->avg_value_size);
+  printf("  Read Amplification: %.2f\n", stats->read_amp);
+  printf("  Cache Hit Rate: %.2f%%\n", stats->hit_rate * 100.0);
 
   if (stats->config) {
     printf("  Configuration:\n");
@@ -421,20 +521,49 @@ static int cmd_cf_stats(const int argc, char **argv) {
            stats->config->write_buffer_size);
     printf("    Level Size Ratio: %zu\n", stats->config->level_size_ratio);
     printf("    Min Levels: %d\n", stats->config->min_levels);
+    printf("    Dividing Level Offset: %d\n",
+           stats->config->dividing_level_offset);
     printf("    Compression: %s\n",
            compression_to_string(stats->config->compression_algorithm));
     printf("    Bloom Filter: %s (FPR: %.4f)\n",
            stats->config->enable_bloom_filter ? "enabled" : "disabled",
            stats->config->bloom_fpr);
-    printf("    Block Indexes: %s\n",
-           stats->config->enable_block_indexes ? "enabled" : "disabled");
-    printf("    Sync Mode: %s\n",
+    printf("    Block Indexes: %s (sample ratio: %d, prefix len: %d)\n",
+           stats->config->enable_block_indexes ? "enabled" : "disabled",
+           stats->config->index_sample_ratio,
+           stats->config->block_index_prefix_len);
+    printf("    Sync Mode: %s",
            sync_mode_to_string(stats->config->sync_mode));
+    if (stats->config->sync_mode == TDB_SYNC_INTERVAL) {
+      printf(" (interval: %" PRIu64 " us)", stats->config->sync_interval_us);
+    }
+    printf("\n");
+    printf("    KLog Value Threshold: %zu bytes\n",
+           stats->config->klog_value_threshold);
+    printf("    Min Disk Space: %" PRIu64 " bytes\n",
+           stats->config->min_disk_space);
+    printf("    L1 File Count Trigger: %d\n",
+           stats->config->l1_file_count_trigger);
+    printf("    L0 Queue Stall Threshold: %d\n",
+           stats->config->l0_queue_stall_threshold);
+    printf("    Default Isolation Level: %s\n",
+           isolation_level_to_string(stats->config->default_isolation_level));
+    printf("    Skip List Max Level: %d\n",
+           stats->config->skip_list_max_level);
+    printf("    Skip List Probability: %.2f\n",
+           stats->config->skip_list_probability);
+    if (stats->config->comparator_name[0] != '\0') {
+      printf("    Comparator: %s\n", stats->config->comparator_name);
+    }
   }
 
   for (int i = 0; i < stats->num_levels; i++) {
-    printf("  Level %d: %d SSTables, %zu bytes\n", i + 1,
-           stats->level_num_sstables[i], stats->level_sizes[i]);
+    printf("  Level %d: %d SSTables, %zu bytes",
+           i + 1, stats->level_num_sstables[i], stats->level_sizes[i]);
+    if (stats->level_key_counts) {
+      printf(", %" PRIu64 " keys", stats->level_key_counts[i]);
+    }
+    printf("\n");
   }
 
   tidesdb_free_stats(stats);
@@ -2532,8 +2661,12 @@ static int execute_command(const char *line) {
     ret = cmd_cf_create(argc, argv);
   } else if (strcmp(cmd, "cf-drop") == 0) {
     ret = cmd_cf_drop(argc, argv);
+  } else if (strcmp(cmd, "cf-rename") == 0) {
+    ret = cmd_cf_rename(argc, argv);
   } else if (strcmp(cmd, "cf-stats") == 0) {
     ret = cmd_cf_stats(argc, argv);
+  } else if (strcmp(cmd, "cf-status") == 0) {
+    ret = cmd_cf_status(argc, argv);
   } else if (strcmp(cmd, "put") == 0) {
     ret = cmd_put(argc, argv);
   } else if (strcmp(cmd, "get") == 0) {
@@ -2580,6 +2713,8 @@ static int execute_command(const char *line) {
     ret = cmd_compact(argc, argv);
   } else if (strcmp(cmd, "flush") == 0) {
     ret = cmd_flush(argc, argv);
+  } else if (strcmp(cmd, "backup") == 0) {
+    ret = cmd_backup(argc, argv);
   } else {
     printf("Unknown command: %s. Type 'help' for available commands.\n", cmd);
     ret = -1;

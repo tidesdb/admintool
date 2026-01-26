@@ -96,27 +96,52 @@ Database Information:
 | `cf-list` | List all column families |
 | `cf-create <name>` | Create a column family with default configuration |
 | `cf-drop <name>` | Drop a column family |
+| `cf-rename <old> <new>` | Rename a column family |
 | `cf-stats <name>` | Show detailed statistics for a column family |
+| `cf-status <name>` | Show flush/compaction status for a column family |
 
 **Example:**
 ```
 admintool(/tmp/testdb)> cf-create users
 Created column family 'users'
 
-admintool(/tmp/testdb)> cf-stats users
-Column Family: users
+admintool(/tmp/testdb)> cf-rename users customers
+Renamed column family 'users' to 'customers'
+
+admintool(/tmp/testdb)> cf-status customers
+Column Family Status: customers
+  Flushing: no
+  Compacting: yes
+
+admintool(/tmp/testdb)> cf-stats customers
+Column Family: customers
   Memtable Size: 1048576 bytes
   Levels: 5
+  Total Keys: 50000
+  Total Data Size: 134217728 bytes (128.00 MB)
+  Avg Key Size: 12.5 bytes
+  Avg Value Size: 256.0 bytes
+  Read Amplification: 2.50
+  Cache Hit Rate: 85.00%
   Configuration:
     Write Buffer Size: 67108864 bytes
     Level Size Ratio: 10
     Min Levels: 5
+    Dividing Level Offset: 2
     Compression: lz4
     Bloom Filter: enabled (FPR: 0.0100)
-    Block Indexes: enabled
-    Sync Mode: interval
-  Level 1: 2 SSTables, 134217728 bytes
-  Level 2: 0 SSTables, 0 bytes
+    Block Indexes: enabled (sample ratio: 1, prefix len: 16)
+    Sync Mode: interval (interval: 128000 us)
+    KLog Value Threshold: 512 bytes
+    Min Disk Space: 104857600 bytes
+    L1 File Count Trigger: 4
+    L0 Queue Stall Threshold: 20
+    Default Isolation Level: read_committed
+    Skip List Max Level: 12
+    Skip List Probability: 0.25
+    Comparator: memcmp
+  Level 1: 2 SSTables, 134217728 bytes, 25000 keys
+  Level 2: 0 SSTables, 0 bytes, 0 keys
   ...
 ```
 
@@ -355,6 +380,7 @@ Verification Results:
 |---------|-------------|
 | `compact <cf>` | Trigger compaction for a column family |
 | `flush <cf>` | Flush memtable to disk |
+| `backup <path>` | Create a database backup at the specified path |
 
 **Examples**
 ```
@@ -363,6 +389,10 @@ Memtable flushed for 'users'
 
 admintool(/tmp/testdb)> compact users
 Compaction triggered for 'users'
+
+admintool(/tmp/testdb)> backup /tmp/testdb_backup
+Creating backup at '/tmp/testdb_backup'...
+Backup completed successfully.
 ```
 
 ### Other Commands
@@ -376,7 +406,7 @@ Compaction triggered for 'users'
 **Example:**
 ```
 admintool> version
-TidesDB version 7.2.0
+TidesDB version 7.4.0
 ```
 
 ## Large File Handling
