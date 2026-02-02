@@ -83,7 +83,8 @@ static void print_usage(void) {
   printf("  close                   Close current database\n");
   printf("  info                    Show database information\n\n");
   printf("  cf-list                 List all column families\n");
-  printf("  cf-create <name>        Create column family with defaults\n");
+  printf("  cf-create <name> [--btree]  Create column family (--btree for "
+         "B+tree format)\n");
   printf("  cf-drop <name>          Drop column family\n");
   printf("  cf-rename <old> <new>   Rename column family\n");
   printf("  cf-stats <name>         Show column family statistics\n");
@@ -367,7 +368,7 @@ static int cmd_cf_list(const int argc, char **argv) {
 
 static int cmd_cf_create(const int argc, char **argv) {
   if (argc < 2) {
-    printf("Usage: cf-create <name>\n");
+    printf("Usage: cf-create <name> [--btree]\n");
     return -1;
   }
 
@@ -376,15 +377,23 @@ static int cmd_cf_create(const int argc, char **argv) {
     return -1;
   }
 
-  const tidesdb_column_family_config_t config =
+  tidesdb_column_family_config_t config =
       tidesdb_default_column_family_config();
+
+  for (int i = 2; i < argc; i++) {
+    if (strcmp(argv[i], "--btree") == 0) {
+      config.use_btree = 1;
+    }
+  }
+
   const int ret = tidesdb_create_column_family(g_db, argv[1], &config);
   if (ret != TDB_SUCCESS) {
     printf("Failed to create column family: %s\n", error_to_string(ret));
     return ret;
   }
 
-  printf("Created column family '%s'\n", argv[1]);
+  printf("Created column family '%s'%s\n", argv[1],
+         config.use_btree ? " (B+tree format)" : "");
   return 0;
 }
 
@@ -532,8 +541,7 @@ static int cmd_cf_stats(const int argc, char **argv) {
            stats->config->enable_block_indexes ? "enabled" : "disabled",
            stats->config->index_sample_ratio,
            stats->config->block_index_prefix_len);
-    printf("    Sync Mode: %s",
-           sync_mode_to_string(stats->config->sync_mode));
+    printf("    Sync Mode: %s", sync_mode_to_string(stats->config->sync_mode));
     if (stats->config->sync_mode == TDB_SYNC_INTERVAL) {
       printf(" (interval: %" PRIu64 " us)", stats->config->sync_interval_us);
     }
@@ -548,22 +556,30 @@ static int cmd_cf_stats(const int argc, char **argv) {
            stats->config->l0_queue_stall_threshold);
     printf("    Default Isolation Level: %s\n",
            isolation_level_to_string(stats->config->default_isolation_level));
-    printf("    Skip List Max Level: %d\n",
-           stats->config->skip_list_max_level);
+    printf("    Skip List Max Level: %d\n", stats->config->skip_list_max_level);
     printf("    Skip List Probability: %.2f\n",
            stats->config->skip_list_probability);
+    printf("    KLog Format: %s\n",
+           stats->config->use_btree ? "B+tree" : "block-based");
     if (stats->config->comparator_name[0] != '\0') {
       printf("    Comparator: %s\n", stats->config->comparator_name);
     }
   }
 
   for (int i = 0; i < stats->num_levels; i++) {
-    printf("  Level %d: %d SSTables, %zu bytes",
-           i + 1, stats->level_num_sstables[i], stats->level_sizes[i]);
+    printf("  Level %d: %d SSTables, %zu bytes", i + 1,
+           stats->level_num_sstables[i], stats->level_sizes[i]);
     if (stats->level_key_counts) {
       printf(", %" PRIu64 " keys", stats->level_key_counts[i]);
     }
     printf("\n");
+  }
+
+  if (stats->use_btree) {
+    printf("  B+tree Statistics:\n");
+    printf("    Total Nodes: %" PRIu64 "\n", stats->btree_total_nodes);
+    printf("    Max Height: %u\n", stats->btree_max_height);
+    printf("    Avg Height: %.2f\n", stats->btree_avg_height);
   }
 
   tidesdb_free_stats(stats);
